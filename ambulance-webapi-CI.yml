@@ -1,0 +1,57 @@
+trigger:
+- master
+
+stages:
+- stage: BuildAndPublish
+  displayName: Build and Publish docker image
+  jobs:  
+  - job: BuildAndPublish
+    displayName: Build and Publish docker image
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: UseDotNet@2
+      displayName: Use .NET core 5.0
+      inputs:
+        packageType: 'sdk'
+        version: '5.0.x'
+    - task: DotNetCoreCLI@2
+      displayName: Dotnet restore
+      inputs:
+        command: 'restore'
+        projects: '**/*.csproj'
+        feedsToUse: 'select'
+    - task: DotNetCoreCLI@2
+      displayName: Dotnet build sources
+      inputs:
+        command: 'build'
+        projects: 'ambulance-api/ambulance-api.csproj'
+        arguments: '--configuration Release --no-restore'
+    - task: DotNetCoreCLI@2
+      displayName: Dotnet build tests
+      inputs:
+        command: 'build'
+        projects: 'ambulance-api.tests/ambulance-api.tests.csproj'
+        arguments: '--configuration Release --no-restore'
+    - task: DotNetCoreCLI@2
+      displayName: Dotnet run tests
+      inputs:
+        command: 'test'
+        projects: 'ambulance-api.tests/ambulance-api.tests.csproj'
+        arguments: '--configuration Release --no-build'
+        testRunTitle: 'ambulance-api-ut'
+    - task: Docker@2
+      displayName: Docker build    
+      inputs:
+        containerRegistry: 'dockerhub-connection'
+        repository: 'patrikracsko/project-ambulance-api'
+        command: 'build'
+        Dockerfile: 'ambulance-api/Dockerfile'
+        tags: 'latest'
+    - task: Docker@2
+      displayName: Docker push
+      inputs:
+        containerRegistry: 'dockerhub-connection'
+        repository: 'patrikracsko/project-ambulance-api'
+        command: 'push'
+        tags: 'latest'
